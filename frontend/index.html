@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Sistem Peminjaman Buku</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: linear-gradient(135deg, #f5f7fa, #e4e7eb);
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  width: 820px;
+  margin: 40px auto;
+  background: #ffffff;
+  padding: 28px 30px;
+  border-radius: 14px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 30px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+h2 {
+  margin-top: 35px;
+  margin-bottom: 15px;
+  font-size: 18px;
+  font-weight: 600;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 6px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+input, select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #dcdcdc;
+  font-size: 14px;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: #4f46e5;
+}
+
+button {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: white;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.actions button {
+  margin: 2px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 18px;
+  font-size: 14px;
+}
+
+th, td {
+  padding: 10px;
+  text-align: center;
+}
+
+th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.section-btn {
+  margin-top: 12px;
+}
+
+.hidden {
+  display: none;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h1>Sistem Peminjaman Buku</h1>
+
+  <!-- ================= BOOK ================= -->
+  <h2>Manajemen Buku</h2>
+
+  <input type="hidden" id="book_id">
+
+  <div class="form-grid">
+    <input id="judul" placeholder="Judul Buku">
+    <input id="penulis" placeholder="Penulis">
+    <input id="tahun" type="number" placeholder="Tahun Terbit">
+    <input id="stok" type="number" placeholder="Stok">
+  </div>
+
+  <div class="section-btn">
+    <button class="btn-primary" onclick="simpanBuku()">Simpan Buku</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Judul</th>
+        <th>Penulis</th>
+        <th>Tahun</th>
+        <th>Stok</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody id="book_list"></tbody>
+  </table>
+
+  <!-- ================= LOAN ================= -->
+  <h2>Transaksi Peminjaman</h2>
+
+  <div class="form-grid">
+    <select id="loan_book"></select>
+    <input id="peminjam" placeholder="Nama Peminjam">
+    <input id="tgl_pinjam" type="date">
+    <input id="tgl_kembali" type="date">
+  </div>
+
+  <div class="section-btn">
+    <button class="btn-primary" onclick="simpanLoan()">Pinjam Buku</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID Buku</th>
+        <th>Peminjam</th>
+        <th>Tgl Pinjam</th>
+        <th>Tgl Kembali</th>
+      </tr>
+    </thead>
+    <tbody id="loan_list"></tbody>
+  </table>
+</div>
+
+<script>
+const BOOK_API = "/api/books";
+const LOAN_API = "/api/loans";
+
+/* ================= BOOK ================= */
+async function loadBooks() {
+  const res = await fetch(BOOK_API);
+  const data = await res.json();
+
+  const tbody = document.getElementById("book_list");
+  const select = document.getElementById("loan_book");
+
+  tbody.innerHTML = "";
+  select.innerHTML = "";
+
+  data.forEach(b => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${b.judul}</td>
+        <td>${b.penulis}</td>
+        <td>${b.tahun}</td>
+        <td>${b.stok}</td>
+        <td class="actions">
+          <button class="btn-secondary"
+            onclick="editBook('${b._id}','${b.judul}','${b.penulis}',${b.tahun},${b.stok})">
+            Edit
+          </button>
+          <button class="btn-danger" onclick="hapusBuku('${b._id}')">
+            Hapus
+          </button>
+        </td>
+      </tr>
+    `;
+    select.innerHTML += `<option value="${b._id}">${b.judul}</option>`;
+  });
+}
+
+async function simpanBuku() {
+  const id = book_id.value;
+  const data = {
+    judul: judul.value,
+    penulis: penulis.value,
+    tahun: Number(tahun.value),
+    stok: Number(stok.value)
+  };
+
+  if (id) {
+    await fetch(`${BOOK_API}/${id}`, {
+      method: "PUT",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(data)
+    });
+  } else {
+    await fetch(BOOK_API, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(data)
+    });
+  }
+
+  resetBook();
+  loadBooks();
+}
+
+function editBook(id,j,p,t,s) {
+  book_id.value = id;
+  judul.value = j;
+  penulis.value = p;
+  tahun.value = t;
+  stok.value = s;
+}
+
+async function hapusBuku(id) {
+  await fetch(`${BOOK_API}/${id}`, { method: "DELETE" });
+  loadBooks();
+}
+
+function resetBook() {
+  book_id.value = "";
+  judul.value = "";
+  penulis.value = "";
+  tahun.value = "";
+  stok.value = "";
+}
+
+/* ================= LOAN ================= */
+
+async function loadLoans() {
+  const res = await fetch(LOAN_API);
+  const data = await res.json();
+
+  const tbody = document.getElementById("loan_list");
+  tbody.innerHTML = "";
+
+  data.forEach(l => {
+    const tglPinjam = l.tanggalPinjam
+      ? new Date(l.tanggalPinjam).toLocaleDateString("id-ID")
+      : "-";
+
+    const tglKembali = l.tanggalKembali
+      ? new Date(l.tanggalKembali).toLocaleDateString("id-ID")
+      : "-";
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${l.bookId}</td>
+        <td>${l.namaPeminjam}</td>
+        <td>${tglPinjam}</td>
+        <td>${tglKembali}</td>
+      </tr>
+    `;
+  });
+}
+
+async function simpanLoan() {
+  const data = {
+    bookId: loan_book.value,
+    namaPeminjam: peminjam.value,
+    tanggalPinjam: tgl_pinjam.value,
+    tanggalKembali: tgl_kembali.value
+  };
+
+  const res = await fetch(LOAN_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    alert("Gagal menyimpan peminjaman:\n" + err);
+    return;
+  }
+
+  peminjam.value = "";
+  loadLoans();
+}
+
+loadBooks();
+loadLoans();
+</script>
+</body>
+</html>
