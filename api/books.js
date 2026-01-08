@@ -1,63 +1,39 @@
-const express = require("express");
-const cors = require("cors");
-const dbConnect = require("./_db");
-const Book = require("../models/Book");
+import dbConnect from "./_db";
+import Book from "../models/Book";
 
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-/**
- * GET /api/books
- */
-app.get("/", async (req, res) => {
+export default async function handler(req, res) {
   try {
     await dbConnect();
-    const data = await Book.find();
-    res.status(200).json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
-/**
- * POST /api/books
- */
-app.post("/", async (req, res) => {
-  try {
-    await dbConnect();
-    const book = await Book.create(req.body);
-    res.status(201).json(book);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+    // GET /api/books
+    if (req.method === "GET") {
+      const data = await Book.find();
+      return res.status(200).json(data);
+    }
 
-/**
- * PUT /api/books/:id
- */
-app.put("/:id", async (req, res) => {
-  try {
-    await dbConnect();
-    await Book.findByIdAndUpdate(req.params.id, req.body);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+    // POST /api/books
+    if (req.method === "POST") {
+      const book = await Book.create(req.body);
+      return res.status(201).json(book);
+    }
 
-/**
- * DELETE /api/books/:id
- */
-app.delete("/:id", async (req, res) => {
-  try {
-    await dbConnect();
-    await Book.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+    // PUT /api/books?id=xxx
+    if (req.method === "PUT") {
+      const { id } = req.query;
+      await Book.findByIdAndUpdate(id, req.body);
+      return res.status(200).json({ success: true });
+    }
 
-module.exports = app;
+    // DELETE /api/books?id=xxx
+    if (req.method === "DELETE") {
+      const { id } = req.query;
+      await Book.findByIdAndDelete(id);
+      return res.status(200).json({ success: true });
+    }
+
+    res.setHeader("Allow", ["GET", "POST", "PUT", "DELETE"]);
+    return res.status(405).end("Method Not Allowed");
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}

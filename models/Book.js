@@ -1,10 +1,11 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const BookSchema = new mongoose.Schema({
   judul: String,
   penulis: String,
   tahun: Number,
-  stok: Number
+  stok: Number,
 });
 
-module.exports = mongoose.models.Book || mongoose.model("Book", BookSchema);
+export default mongoose.models.Book ||
+  mongoose.model("Book", BookSchema);
